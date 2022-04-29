@@ -19,7 +19,7 @@ import java.io.File
 import javax.imageio.ImageIO
 import kotlin.system.measureTimeMillis
 
-var shapeHandler = ShapeHandler(PolygoniserConfig.STARTING_SHAPE)
+var shapeHandler = ShapeHandler(PolygoniserConfig.STARTING_SHAPE).also {it.calcImageMeanColours()}
 
 @Composable
 @Preview
@@ -31,15 +31,13 @@ fun polyApp() {
             val fieldContent: Int = if (fieldValue.value.text == "") 0 else fieldValue.value.text.toInt()
 
             TextField(value = fieldValue.value, onValueChange = { fieldValue.value = it })
-            splitWithLineLengthButton(fieldContent)
+            splitWithAreaAndColourButton(fieldContent)
             splitWithAreaButton(fieldContent)
-            splitWithVarianceButton(fieldContent)
             resetShapeButton()
             favourLengthCheckBox()
         }
         Spacer(modifier = Modifier.height(8.dp))
         Canvas(modifier = Modifier.fillMaxSize()) {
-            shapeHandler.calcImageMeanColours()
             shapeHandler.paths.forEach {
                 drawPath(
                     path = it.first, color = it.second
@@ -95,6 +93,7 @@ fun splitWithAreaButton(repetitions: Int) {
                 shapeHandler.splitRandomShapeAreaBias()
             }
             shapeHandler.calcImageMeanColours()
+
         }, colors = ButtonDefaults.textButtonColors(
             backgroundColor = Color.Red
         )
@@ -103,6 +102,25 @@ fun splitWithAreaButton(repetitions: Int) {
     }
 }
 
+@Composable
+fun splitWithAreaAndColourButton(repetitions: Int) {
+
+    Button(
+        onClick = {
+            println(measureTimeMillis {
+                repeat(repetitions) {
+                    shapeHandler.splitShapeAreaAndColourBias()
+                }
+            })
+        }, colors = ButtonDefaults.textButtonColors(
+            backgroundColor = Color.Red
+        )
+    ) {
+        Text("Split Area/Col Bias")
+    }
+}
+
+@Deprecated("Variance turns out to be a bad metric for splitting shapes as the algorithm gets stuck in local maxima of massive variance (i.e on a tiny white/black border)")
 @Composable
 fun splitWithVarianceButton(repetitions: Int) {
 

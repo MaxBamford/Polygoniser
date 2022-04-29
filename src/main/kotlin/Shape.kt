@@ -4,13 +4,15 @@ import java.util.Collections
 import kotlin.math.abs
 import kotlin.random.Random
 
-class Shape(val lines: List<Line>, var colour: Color) {
+data class Shape(val lines: List<Line>, var colour: Color) {
     private var _area: Float? = null
     private var _coordinatePath: List<Point>? = null
     private var _path: Path? = null
     private var _maxLength: Float? = null
     private var _variance: Float? = null
+    private var _splitAttempts = 0
     var isColourCalculated = false
+
 
     val variance: Float
         get() {
@@ -52,6 +54,41 @@ class Shape(val lines: List<Line>, var colour: Color) {
             }
             return _maxLength!!
         }
+
+    val splitAttempts: Int
+        get() = _splitAttempts
+
+    fun addAttempt() {
+        _splitAttempts++
+    }
+
+    fun setAttempts(newValue: Int) {
+        _splitAttempts = newValue
+    }
+
+    //merges the current shape with the shape supplied
+    fun merge(other: Shape): Shape {
+        val sharedPoints = coordinatePath.intersect(other.coordinatePath.toSet()) //should only be one line shared by both shapes, hence two points
+        val sharedPoint1 = sharedPoints.first()
+        val sharedPoint2 = sharedPoints.last()
+        //there will always be two kinds of shape in this relationship - one will have the new points (which will be shared between both shapes) at the first and last positions
+        //dubbed the "wrapper" and one with both new points in consecutive positions - the "splitter"
+        val wrapper = if (coordinatePath.first() == sharedPoint1 || coordinatePath.first() == sharedPoint2) this.coordinatePath else other.coordinatePath
+        val splitter = if (wrapper == this.coordinatePath) other.coordinatePath else this.coordinatePath
+
+        val insertionPoint = if (splitter.indexOf(sharedPoint1) < splitter.indexOf(sharedPoint2)) splitter.indexOf(sharedPoint1) else splitter.indexOf(sharedPoint2)
+
+        val newSplitter: MutableList<Point> = splitter.toMutableList()
+            .also { it.removeAll(listOf(sharedPoint1, sharedPoint2)) }
+        val newWrapper = wrapper.toMutableList()
+            .also { it.removeAll(listOf(sharedPoint1, sharedPoint2)) }
+
+        val newShape = Util.poly(newSplitter.also {it.addAll(insertionPoint, newWrapper) })
+
+        newShape.colour = this.colour
+
+        return newShape
+    }
 
     //returns a value which describe a rectangular region around the shape
     fun calcRegion(): Pair<Pair<Int, Int>, Pair<Int, Int>> {
